@@ -140,23 +140,35 @@ async def add_date_start(callback: CallbackQuery, state: FSMContext):
     )
 
     # Show calendar with save button
-    # Use 'ru' locale as it's available on all servers ('uz' locale not installed on Render)
-    calendar = SimpleCalendar(locale='ru')
-    calendar_keyboard = await calendar.start_calendar()
+    try:
+        # Use 'ru' locale as it's available on all servers ('uz' locale not installed on Render)
+        logger.info(f"Creating calendar with 'ru' locale...")
+        calendar = SimpleCalendar(locale='ru')
+        logger.info(f"Calendar created successfully")
 
-    await callback.message.answer(
-        get_text('admin_select_date_from_calendar', language, count=0),
-        reply_markup=calendar_keyboard
-    )
+        calendar_keyboard = await calendar.start_calendar()
+        logger.info(f"Calendar keyboard generated: {calendar_keyboard}")
 
-    # Show save button below calendar
-    await callback.message.answer(
-        "👇 Tugash uchun:",
-        reply_markup=get_save_dates_keyboard(language)
-    )
+        await callback.message.answer(
+            get_text('admin_select_date_from_calendar', language, count=0),
+            reply_markup=calendar_keyboard
+        )
+        logger.info(f"Calendar message sent")
 
-    await state.set_state(AdminStates.adding_date)
-    await callback.answer()
+        # Show save button below calendar
+        await callback.message.answer(
+            "👇 Tugash uchun:",
+            reply_markup=get_save_dates_keyboard(language)
+        )
+        logger.info(f"Save button sent")
+
+        await state.set_state(AdminStates.adding_date)
+        await callback.answer()
+
+    except Exception as e:
+        logger.error(f"ERROR creating/showing calendar: {e}", exc_info=True)
+        await callback.message.answer(f"❌ Kalendar xatoligi: {str(e)}")
+        await callback.answer()
 
 
 @router.callback_query(SimpleCalendarCallback.filter(), AdminStates.adding_date)
