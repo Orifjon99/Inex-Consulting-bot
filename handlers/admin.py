@@ -10,9 +10,8 @@ import logging
 import re
 import os
 
-from aiogram_calendar import SimpleCalendar, SimpleCalendarCallback
-
 from states import AdminStates
+from custom_calendar import get_current_month_keyboard, get_month_keyboard
 from database import db
 from keyboards import (
     get_admin_main_keyboard,
@@ -139,41 +138,49 @@ async def add_date_start(callback: CallbackQuery, state: FSMContext):
         get_text('admin_add_date_instruction', language)
     )
 
-    # Show calendar with save button
-    try:
-        # Use default English locale as it's available on all servers
-        logger.info(f"Creating calendar with default locale...")
-        calendar = SimpleCalendar()
-        logger.info(f"Calendar created successfully")
+    # Show custom calendar (no locale issues!)
+    calendar_keyboard = get_current_month_keyboard(language)
 
-        calendar_keyboard = await calendar.start_calendar()
-        logger.info(f"Calendar keyboard generated: {calendar_keyboard}")
+    await callback.message.answer(
+        get_text('admin_select_date_from_calendar', language, count=0),
+        reply_markup=calendar_keyboard
+    )
 
-        await callback.message.answer(
-            get_text('admin_select_date_from_calendar', language, count=0),
-            reply_markup=calendar_keyboard
-        )
-        logger.info(f"Calendar message sent")
+    # Show save button below calendar
+    await callback.message.answer(
+        "👇 Tugash uchun:",
+        reply_markup=get_save_dates_keyboard(language)
+    )
 
-        # Show save button below calendar
-        await callback.message.answer(
-            "👇 Tugash uchun:",
-            reply_markup=get_save_dates_keyboard(language)
-        )
-        logger.info(f"Save button sent")
-
-        await state.set_state(AdminStates.adding_date)
-        await callback.answer()
-
-    except Exception as e:
-        logger.error(f"ERROR creating/showing calendar: {e}", exc_info=True)
-        await callback.message.answer(f"❌ Kalendar xatoligi: {str(e)}")
-        await callback.answer()
+    await state.set_state(AdminStates.adding_date)
+    await callback.answer()
 
 
-@router.callback_query(SimpleCalendarCallback.filter(), AdminStates.adding_date)
-async def process_calendar_selection(callback: CallbackQuery, callback_data: dict, state: FSMContext):
-    """Process calendar date selection - keep calendar open for multi-select"""
+@router.callback_query(F.data.startswith('month_'), AdminStates.adding_date)
+async def change_calendar_month(callback: CallbackQuery, state: FSMContext):
+    """Change calendar month"""
+    if not is_admin(callback.from_user.id):
+        await callback.answer(get_text('not_admin', 'uz'), show_alert=True)
+        return
+
+    user_data = await state.get_data()
+    language = user_data.get('language', 'uz')
+
+    # Parse month data: month_YYYY_MM
+    parts = callback.data.split('_')
+    year = int(parts[1])
+    month = int(parts[2])
+
+    # Update calendar
+    calendar_keyboard = get_month_keyboard(year, month, language)
+
+    await callback.message.edit_reply_markup(reply_markup=calendar_keyboard)
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith('pickdate_'), AdminStates.adding_date)
+async def pick_calendar_date(callback: CallbackQuery, state: FSMContext):
+    """Pick a date from calendar"""
     if not is_admin(callback.from_user.id):
         await callback.answer(get_text('not_admin', 'uz'), show_alert=True)
         return
@@ -182,38 +189,30 @@ async def process_calendar_selection(callback: CallbackQuery, callback_data: dic
     language = user_data.get('language', 'uz')
     selected_dates = user_data.get('selected_dates', [])
 
-    # Use default English locale as it's available on all servers
-    calendar = SimpleCalendar()
-    selected, date = await calendar.process_selection(callback, callback_data)
+    # Parse date: pickdate_DD.MM.YYYY
+    formatted_date = callback.data.replace('pickdate_', '')
 
-    if selected:
-        # Date selected - add to list
-        formatted_date = date.strftime('%d.%m.%Y')
+    # Check if date already in selected list
+    if formatted_date not in selected_dates:
+        selected_dates.append(formatted_date)
+        await state.update_data(selected_dates=selected_dates)
 
-        # Check if date already in selected list
-        if formatted_date not in selected_dates:
-            selected_dates.append(formatted_date)
-            await state.update_data(selected_dates=selected_dates)
+        # Notify user
+        await callback.answer(
+            get_text('date_selected_added', language, date=formatted_date),
+            show_alert=True
+        )
+    else:
+        await callback.answer(
+            get_text('date_already_exists', language, date=formatted_date),
+            show_alert=True
+        )
 
-            # Notify user
-            await callback.answer(
-                get_text('date_selected_added', language, date=formatted_date),
-                show_alert=True
-            )
-        else:
-            await callback.answer(
-                get_text('date_already_exists', language, date=formatted_date),
-                show_alert=True
-            )
 
-        # Update counter message - don't close calendar
-        try:
-            await callback.message.edit_text(
-                get_text('admin_select_date_from_calendar', language, count=len(selected_dates)),
-                reply_markup=callback.message.reply_markup
-            )
-        except:
-            pass  # If message not modified, ignore
+@router.callback_query(F.data == 'ignore')
+async def ignore_callback(callback: CallbackQuery):
+    """Ignore callback for non-interactive buttons"""
+    await callback.answer()
 
 
 @router.callback_query(F.data == 'admin_save_dates')
