@@ -1,8 +1,14 @@
 """
 Inline keyboards for INEX CONSULTING Bot
 """
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-from aiogram.utils.keyboard import InlineKeyboardBuilder
+from aiogram.types import (
+    InlineKeyboardMarkup,
+    InlineKeyboardButton,
+    ReplyKeyboardMarkup,
+    KeyboardButton,
+    ReplyKeyboardRemove
+)
+from aiogram.utils.keyboard import InlineKeyboardBuilder, ReplyKeyboardBuilder
 from typing import List
 from config import CHANNEL_URL
 from texts import get_text
@@ -216,3 +222,84 @@ def get_export_confirm_keyboard(lang: str = 'uz') -> InlineKeyboardMarkup:
         )
     )
     return builder.as_markup()
+
+
+def get_regions_keyboard(lang: str = 'uz') -> InlineKeyboardMarkup:
+    """Keyboard with all regions of Uzbekistan"""
+    builder = InlineKeyboardBuilder()
+
+    # All regions of Uzbekistan
+    regions_uz = [
+        "Toshkent shahri",
+        "Toshkent viloyati",
+        "Samarqand",
+        "Buxoro",
+        "Xorazm",
+        "Andijon",
+        "Farg'ona",
+        "Namangan",
+        "Qashqadaryo",
+        "Surxondaryo",
+        "Jizzax",
+        "Sirdaryo",
+        "Navoiy",
+        "Qoraqalpog'iston"
+    ]
+
+    regions_ru = [
+        "г. Ташкент",
+        "Ташкентская обл.",
+        "Самарканд",
+        "Бухара",
+        "Хорезм",
+        "Андижан",
+        "Фергана",
+        "Наманган",
+        "Кашкадарья",
+        "Сурхандарья",
+        "Джизак",
+        "Сырдарья",
+        "Навои",
+        "Каракалпакстан"
+    ]
+
+    regions = regions_uz if lang == 'uz' else regions_ru
+
+    # Create buttons (2 per row)
+    for i in range(0, len(regions), 2):
+        row_buttons = []
+        for j in range(2):
+            if i + j < len(regions):
+                row_buttons.append(
+                    InlineKeyboardButton(
+                        text=regions[i + j],
+                        callback_data=f"region_{regions_uz[i + j]}"  # Always use Uzbek as callback data
+                    )
+                )
+        builder.row(*row_buttons)
+
+    # Cancel button
+    builder.row(
+        InlineKeyboardButton(
+            text=get_text('cancel', lang),
+            callback_data="cancel"
+        )
+    )
+
+    return builder.as_markup()
+
+
+def get_phone_contact_keyboard(lang: str = 'uz') -> ReplyKeyboardMarkup:
+    """Reply keyboard with contact share button"""
+    builder = ReplyKeyboardBuilder()
+
+    # Contact share button
+    contact_text = "📞 Telegram raqamimni ulashish" if lang == 'uz' else "📞 Поделиться номером Telegram"
+    builder.row(
+        KeyboardButton(
+            text=contact_text,
+            request_contact=True
+        )
+    )
+
+    return builder.as_markup(resize_keyboard=True, one_time_keyboard=True)

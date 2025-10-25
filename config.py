@@ -10,7 +10,9 @@ load_dotenv()
 BOT_TOKEN = os.getenv('BOT_TOKEN', '8236382244:AAHCRDBqKpIwo9jHYgr4lA-sTjriMBjwgZs')
 
 # Channel Configuration
+# CHANNEL_ID = '@man_ku_bu'
 CHANNEL_ID = '@InEx_Operations'
+# CHANNEL_URL = 'https://t.me/man_ku_bu'
 CHANNEL_URL = 'https://t.me/InEx_Operations'
 
 # Admin IDs (Telegram user IDs)

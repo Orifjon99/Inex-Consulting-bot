@@ -175,8 +175,8 @@ Quyidagi amallardan birini tanlang:""",
     },
 
     'export_and_clear': {
-        'uz': "📊 Excel yuklab olish va tozalash",
-        'ru': "📊 Скачать Excel и очистить"
+        'uz': "📊 Excel yuklab olish",
+        'ru': "📊 Скачать Excel"
     },
 
     'add_date': {
@@ -397,24 +397,22 @@ Tez orada javob berishadi.""",
 
     # Export and clear
     'export_confirm': {
-        'uz': """⚠️ Diqqat!
+        'uz': """📊 Excel yuklab olish
 
-Siz ro'yxatlarni Excel faylga yuklab olmoqchisiz va bazani tozalamoqchisiz.
+Siz ro'yxatlarni Excel faylga yuklab olmoqchisiz.
 
 Bu amalni bajarilgandan so'ng:
 ✅ Barcha ro'yxatlar Excel faylga yuklanadi
-❌ Bazadan barcha ro'yxatlar o'chiriladi
-❌ Barcha uchrashuv sanalari o'chiriladi
+💾 Baza saqlanib qoladi (o'chirilmaydi)
 
 Davom etasizmi?""",
-        'ru': """⚠️ Внимание!
+        'ru': """📊 Экспорт в Excel
 
-Вы хотите скачать регистрации в Excel и очистить базу.
+Вы хотите скачать регистрации в Excel.
 
 После выполнения этой операции:
 ✅ Все регистрации будут выгружены в Excel
-❌ Все регистрации будут удалены из базы
-❌ Все даты встреч будут удалены
+💾 База данных сохранится (не удалится)
 
 Продолжить?"""
     },

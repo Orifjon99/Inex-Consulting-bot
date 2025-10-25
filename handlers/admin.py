@@ -495,10 +495,6 @@ async def confirm_export_and_clear(callback: CallbackQuery, state: FSMContext, b
             caption=f"📊 INEX CONSULTING ro'yxatlari\n\nJami: {len(registrations)} ta"
         )
 
-        # Clear database
-        registrations_cleared = db.clear_all_registrations()
-        dates_cleared = db.clear_all_meeting_dates()
-
         # Delete local Excel file
         try:
             os.remove(excel_file)
@@ -506,21 +502,20 @@ async def confirm_export_and_clear(callback: CallbackQuery, state: FSMContext, b
         except Exception as e:
             logger.warning(f"Could not delete Excel file {excel_file}: {e}")
 
-        # Show success message
+        # Show success message (database NOT cleared!)
+        success_msg = "✅ Excel fayl yuborildi!\n\n💾 Database saqlanib qoldi." if language == 'uz' else "✅ Excel файл отправлен!\n\n💾 База данных сохранена."
         await callback.message.edit_text(
-            get_text('export_success', language,
-                    registrations_count=registrations_cleared,
-                    dates_count=dates_cleared),
+            success_msg,
             reply_markup=get_admin_main_keyboard(language)
         )
 
-        logger.info(f"Admin {callback.from_user.id} exported and cleared database: "
-                   f"{registrations_cleared} registrations, {dates_cleared} dates")
+        logger.info(f"Admin {callback.from_user.id} exported {len(registrations)} registrations to Excel (database NOT cleared)")
 
     except Exception as e:
-        logger.error(f"Error during export and clear: {e}")
+        logger.error(f"Error during export: {e}")
+        error_msg = "❌ Excel yuklashda xatolik!" if language == 'uz' else "❌ Ошибка при экспорте Excel!"
         await callback.message.edit_text(
-            get_text('export_error', language),
+            error_msg,
             reply_markup=get_admin_main_keyboard(language)
         )
 

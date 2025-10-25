@@ -15,7 +15,10 @@ from keyboards import (
     get_channel_subscription_keyboard,
     get_meeting_dates_keyboard,
     get_cancel_keyboard,
-    get_reply_to_user_keyboard
+    get_reply_to_user_keyboard,
+    get_regions_keyboard,
+    get_phone_contact_keyboard,
+    ReplyKeyboardRemove
 )
 from texts import get_text
 from config import ADMIN_IDS, CHANNEL_ID
@@ -66,6 +69,8 @@ async def process_language_selection(callback: CallbackQuery, state: FSMContext,
     # Check if user is already subscribed to channel
     try:
         member = await bot.get_chat_member(chat_id=CHANNEL_ID, user_id=user_id)
+        logger.info(f"User {user_id} subscription status: {member.status}")
+
         if member.status in ['member', 'administrator', 'creator']:
             # User is already subscribed
             db.set_user_subscribed(user_id, True)
@@ -75,8 +80,10 @@ async def process_language_selection(callback: CallbackQuery, state: FSMContext,
             # Show meeting date selection
             await show_meeting_dates(callback.message, state, language)
             return
+        else:
+            logger.warning(f"User {user_id} status is '{member.status}' - not subscribed")
     except Exception as e:
-        logger.error(f"Error checking subscription: {e}")
+        logger.error(f"Error checking subscription for user {user_id}: {e}", exc_info=True)
 
     # User not subscribed - show subscription message
     await callback.message.edit_text(
@@ -97,6 +104,7 @@ async def check_subscription(callback: CallbackQuery, state: FSMContext, bot: Bo
 
     try:
         member = await bot.get_chat_member(chat_id=CHANNEL_ID, user_id=user_id)
+        logger.info(f"User {user_id} subscription check - status: {member.status}")
 
         if member.status in ['member', 'administrator', 'creator']:
             # User is subscribed
@@ -112,6 +120,7 @@ async def check_subscription(callback: CallbackQuery, state: FSMContext, bot: Bo
 
         else:
             # User not subscribed - edit existing message
+            logger.warning(f"User {user_id} subscription check FAILED - status: {member.status}")
             await callback.answer()  # Close loading
             await callback.message.edit_text(
                 get_text('welcome', language) + '\n\n' + get_text('not_subscribed', language),
@@ -119,7 +128,8 @@ async def check_subscription(callback: CallbackQuery, state: FSMContext, bot: Bo
             )
 
     except Exception as e:
-        logger.error(f"Error checking subscription for user {user_id}: {e}")
+        logger.error(f"Error checking subscription for user {user_id}: {e}", exc_info=True)
+        logger.error(f"Channel ID: {CHANNEL_ID}, User ID: {user_id}")
         await callback.answer()  # Close loading
         # Try to edit, if fails then send new message
         try:
@@ -216,17 +226,49 @@ async def process_fullname(message: Message, state: FSMContext):
 
     await state.update_data(fullname=fullname)
 
-    # Ask for phone
+    # Ask for phone with contact share option
+    phone_text = get_text('ask_phone', language)
+    manual_text = "Yoki qo'lda kiriting: +998901234567" if language == 'uz' else "Или введите вручную: +998901234567"
+
     await message.answer(
-        get_text('ask_phone', language),
-        reply_markup=get_cancel_keyboard(language)
+        f"{phone_text}\n\n{manual_text}",
+        reply_markup=get_phone_contact_keyboard(language)
     )
     await state.set_state(UserRegistration.entering_phone)
 
 
-@router.message(UserRegistration.entering_phone)
-async def process_phone(message: Message, state: FSMContext):
-    """Handle phone input"""
+@router.message(UserRegistration.entering_phone, F.contact)
+async def process_phone_contact(message: Message, state: FSMContext):
+    """Handle phone shared via contact"""
+    user_data = await state.get_data()
+    language = user_data.get('language', 'uz')
+
+    # Get phone from contact
+    phone = message.contact.phone_number
+
+    # Ensure it starts with +
+    if not phone.startswith('+'):
+        phone = '+' + phone
+
+    await state.update_data(phone=phone)
+
+    # Remove reply keyboard and ask for address (region)
+    await message.answer(
+        get_text('ask_address', language),
+        reply_markup=ReplyKeyboardRemove()
+    )
+
+    # Show regions keyboard
+    await message.answer(
+        "📍 Viloyatingizni tanlang:" if language == 'uz' else "📍 Выберите область:",
+        reply_markup=get_regions_keyboard(language)
+    )
+    await state.set_state(UserRegistration.entering_address)
+
+
+@router.message(UserRegistration.entering_phone, F.text)
+async def process_phone_text(message: Message, state: FSMContext):
+    """Handle phone entered manually as text"""
     user_data = await state.get_data()
     language = user_data.get('language', 'uz')
 
@@ -244,35 +286,46 @@ async def process_phone(message: Message, state: FSMContext):
 
     # Validate phone format (Uzbekistan)
     if not re.match(r'^\+998\d{9}$', phone):
-        await message.answer(get_text('invalid_phone', language))
+        await message.answer(
+            get_text('invalid_phone', language),
+            reply_markup=get_phone_contact_keyboard(language)
+        )
         return
 
     await state.update_data(phone=phone)
 
-    # Ask for address
+    # Remove reply keyboard and ask for address (region)
     await message.answer(
         get_text('ask_address', language),
-        reply_markup=get_cancel_keyboard(language)
+        reply_markup=ReplyKeyboardRemove()
+    )
+
+    # Show regions keyboard
+    await message.answer(
+        "📍 Viloyatingizni tanlang:" if language == 'uz' else "📍 Выберите область:",
+        reply_markup=get_regions_keyboard(language)
     )
     await state.set_state(UserRegistration.entering_address)
 
 
-@router.message(UserRegistration.entering_address)
-async def process_address(message: Message, state: FSMContext):
-    """Handle address input"""
+@router.callback_query(F.data.startswith('region_'), UserRegistration.entering_address)
+async def process_region_selection(callback: CallbackQuery, state: FSMContext):
+    """Handle region selection"""
     user_data = await state.get_data()
     language = user_data.get('language', 'uz')
 
-    address = message.text.strip()
+    # Extract region from callback data: region_Toshkent shahri
+    region = callback.data.replace('region_', '')
 
-    if len(address) < 5:
-        await message.answer(get_text('ask_address', language))
-        return
+    await state.update_data(address=region)
 
-    await state.update_data(address=address)
+    await callback.answer()
+    await callback.message.edit_text(
+        f"✅ {region}"
+    )
 
     # Ask for company
-    await message.answer(
+    await callback.message.answer(
         get_text('ask_company', language),
         reply_markup=get_cancel_keyboard(language)
     )
