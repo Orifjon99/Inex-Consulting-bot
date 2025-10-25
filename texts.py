@@ -13,12 +13,12 @@ TEXTS = {
     'welcome': {
         'uz': """👋 Assalomu alaykum!
 
-🎯 INEX CONSULTING ning rasmiy botiga xush kelibsiz!
+🎯 InEx konsalting kompaniyasining rasmiy botiga xush kelibsiz!
 
 Biz bilan uchrashuv tashkil qilish uchun davom etishingiz mumkin.""",
         'ru': """👋 Здравствуйте!
 
-🎯 Добро пожаловать в официальный бот INEX CONSULTING!
+🎯 Добро пожаловать в официальный бот InEx консалтинг!
 
 Вы можете продолжить для организации встречи с нами."""
     },
