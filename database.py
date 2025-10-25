@@ -189,6 +189,21 @@ class Database:
         conn.close()
         return dates
 
+    def get_booked_meeting_dates(self) -> List[str]:
+        """Get booked (registered) meeting dates"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+
+        cursor.execute('''
+            SELECT DISTINCT meeting_date
+            FROM registrations
+            ORDER BY meeting_date
+        ''')
+
+        dates = [row['meeting_date'] for row in cursor.fetchall()]
+        conn.close()
+        return dates
+
     def remove_meeting_date(self, date: str):
         """Deactivate meeting date"""
         conn = self.get_connection()

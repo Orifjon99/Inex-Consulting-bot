@@ -36,17 +36,38 @@ def get_channel_subscription_keyboard(lang: str = 'uz') -> InlineKeyboardMarkup:
     return builder.as_markup()
 
 
-def get_meeting_dates_keyboard(dates: List[str], lang: str = 'uz') -> InlineKeyboardMarkup:
-    """Meeting dates selection keyboard"""
+def get_meeting_dates_keyboard(all_dates: List[str], booked_dates: List[str], lang: str = 'uz') -> InlineKeyboardMarkup:
+    """
+    Meeting dates selection keyboard with visual indicators
+    Shows: ✅ for available dates, 🔒 for booked dates
+    Layout: 3 dates per row
+    """
     builder = InlineKeyboardBuilder()
 
-    for date in dates:
-        builder.row(
-            InlineKeyboardButton(
-                text=f"📅 {date}",
-                callback_data=f"date_{date}"
+    # Create buttons for all dates
+    buttons = []
+    for date in all_dates:
+        if date in booked_dates:
+            # Booked date - show with lock icon, make non-clickable
+            buttons.append(
+                InlineKeyboardButton(
+                    text=f"🔒 {date}",
+                    callback_data=f"date_booked_{date}"
+                )
             )
-        )
+        else:
+            # Available date - show with check mark
+            buttons.append(
+                InlineKeyboardButton(
+                    text=f"✅ {date}",
+                    callback_data=f"date_{date}"
+                )
+            )
+
+    # Arrange buttons in rows of 3
+    for i in range(0, len(buttons), 3):
+        row_buttons = buttons[i:i+3]
+        builder.row(*row_buttons)
 
     return builder.as_markup()
 

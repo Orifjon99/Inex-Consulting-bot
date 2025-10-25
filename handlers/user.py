@@ -137,20 +137,36 @@ async def check_subscription(callback: CallbackQuery, state: FSMContext, bot: Bo
 # ========== MEETING DATE SELECTION ==========
 
 async def show_meeting_dates(message: Message, state: FSMContext, language: str):
-    """Show available (not booked) meeting dates"""
-    dates = db.get_available_meeting_dates()
+    """Show all meeting dates with visual indicators (available and booked)"""
+    all_dates = db.get_active_meeting_dates()
+    booked_dates = db.get_booked_meeting_dates()
 
-    if not dates:
+    if not all_dates:
         await message.answer(get_text('no_dates_available', language))
         # Clear state so user can send messages freely
         await state.clear()
         return
 
+    # Create message with legend
+    legend = "📌 ✅ - Mavjud sanalar\n📌 🔒 - Band qilingan sanalar" if language == 'uz' else "📌 ✅ - Доступные даты\n📌 🔒 - Забронированные даты"
+    message_text = get_text('select_date', language) + "\n\n" + legend
+
     await message.answer(
-        get_text('select_date', language),
-        reply_markup=get_meeting_dates_keyboard(dates, language)
+        message_text,
+        reply_markup=get_meeting_dates_keyboard(all_dates, booked_dates, language)
     )
     await state.set_state(UserRegistration.selecting_date)
+
+
+@router.callback_query(F.data.startswith('date_booked_'))
+async def process_booked_date_click(callback: CallbackQuery, state: FSMContext):
+    """Handle click on booked date - show alert"""
+    user_data = await state.get_data()
+    language = user_data.get('language', 'uz')
+
+    # Show alert that date is booked
+    alert_text = "⚠️ Bu sana allaqachon band qilingan!\nIltimos, boshqa sana tanlang." if language == 'uz' else "⚠️ Эта дата уже забронирована!\nПожалуйста, выберите другую дату."
+    await callback.answer(alert_text, show_alert=True)
 
 
 @router.callback_query(F.data.startswith('date_'))
