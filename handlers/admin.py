@@ -141,9 +141,9 @@ async def add_date_start(callback: CallbackQuery, state: FSMContext):
 
     # Show calendar with save button
     try:
-        # Use 'ru' locale as it's available on all servers ('uz' locale not installed on Render)
-        logger.info(f"Creating calendar with 'ru' locale...")
-        calendar = SimpleCalendar(locale='ru')
+        # Use default English locale as it's available on all servers
+        logger.info(f"Creating calendar with default locale...")
+        calendar = SimpleCalendar()
         logger.info(f"Calendar created successfully")
 
         calendar_keyboard = await calendar.start_calendar()
@@ -182,8 +182,8 @@ async def process_calendar_selection(callback: CallbackQuery, callback_data: dic
     language = user_data.get('language', 'uz')
     selected_dates = user_data.get('selected_dates', [])
 
-    # Use 'ru' locale as it's available on all servers ('uz' locale not installed on Render)
-    calendar = SimpleCalendar(locale='ru')
+    # Use default English locale as it's available on all servers
+    calendar = SimpleCalendar()
     selected, date = await calendar.process_selection(callback, callback_data)
 
     if selected:
